@@ -1,0 +1,292 @@
+-- Xeno BACKPACK + AntiPush CHECKER - EGY SCRIPTBEN
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Mouse = LocalPlayer:GetMouse()
+
+-- Változók
+local guiOpen = false
+local selectedPlayer = nil
+local highlight = nil
+
+-- FŐ GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "InventoryAntiPushViewer"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 450, 0, 350)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 12)
+Corner.Parent = MainFrame
+
+-- Árnyék
+local Shadow = Instance.new("ImageLabel")
+Shadow.Name = "Shadow"
+Shadow.Parent = MainFrame
+Shadow.BackgroundTransparency = 1
+Shadow.Position = UDim2.new(0, -10, 0, 10)
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.ImageTransparency = 0.7
+Shadow.ScaleType = Enum.ScaleType.Slice
+Shadow.ZIndex = -1
+
+-- Cím
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 15, 0, 10)
+Title.Size = UDim2.new(1, -60, 0, 30)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "🎒 Inventory + 🔍 AntiPush Viewer"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+
+-- AntiPush Info Panel
+local AntiPushFrame = Instance.new("Frame")
+AntiPushFrame.Name = "AntiPushFrame"
+AntiPushFrame.Parent = MainFrame
+AntiPushFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+AntiPushFrame.Position = UDim2.new(0, 15, 0, 45)
+AntiPushFrame.Size = UDim2.new(1, -30, 0, 50)
+
+local AntiPushCorner = Instance.new("UICorner")
+AntiPushCorner.CornerRadius = UDim.new(0, 8)
+AntiPushCorner.Parent = AntiPushFrame
+
+local AntiPushTitle = Instance.new("TextLabel")
+AntiPushTitle.Name = "AntiPushTitle"
+AntiPushTitle.Parent = AntiPushFrame
+AntiPushTitle.BackgroundTransparency = 1
+AntiPushTitle.Position = UDim2.new(0, 10, 0, 5)
+AntiPushTitle.Size = UDim2.new(0.5, 0, 0, 20)
+AntiPushTitle.Font = Enum.Font.GothamBold
+AntiPushTitle.Text = "🔍 AntiPush:"
+AntiPushTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiPushTitle.TextSize = 14
+
+local AntiPushPath = Instance.new("TextLabel")
+AntiPushPath.Name = "AntiPushPath"
+AntiPushPath.Parent = AntiPushFrame
+AntiPushPath.BackgroundTransparency = 1
+AntiPushPath.Position = UDim2.new(0, 10, 0, 25)
+AntiPushPath.Size = UDim2.new(1, -20, 0, 20)
+AntiPushPath.Font = Enum.Font.Gotham
+AntiPushPath.Text = "Players > Név > TagSettings > AntiPush"
+AntiPushPath.TextColor3 = Color3.fromRGB(200, 200, 200)
+AntiPushPath.TextSize = 12
+AntiPushPath.TextXAlignment = Enum.TextXAlignment.Left
+AntiPushPath.TextTruncate = Enum.TextTruncate.AtEnd
+
+-- ScrollFrame Backpackhoz
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Parent = MainFrame
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.Position = UDim2.new(0, 15, 0, 105)
+ScrollFrame.Size = UDim2.new(1, -30, 1, -130)
+ScrollFrame.ScrollBarThickness = 8
+
+local ListLayout = Instance.new("UIListLayout")
+ListLayout.Parent = ScrollFrame
+ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ListLayout.Padding = UDim.new(0, 5)
+
+-- Zárás gomb
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = MainFrame
+CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+CloseButton.Position = UDim2.new(1, -40, 0, 10)
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseButton
+
+-- FUNKCIÓK
+local function getPlayerFromPart(part)
+    local character = part
+    while character and character ~= workspace do
+        if character:FindFirstChildOfClass("Humanoid") then
+            local player = Players:GetPlayerFromCharacter(character)
+            if player and player ~= LocalPlayer then
+                return player
+            end
+        end
+        character = character.Parent
+    end
+    return nil
+end
+
+local function checkAntiPush(player)
+    local path = "Players > " .. player.Name .. " > "
+    local tagSettings = player:FindFirstChild("TagSettings") or player:FindFirstChild("TagSetting")
+    
+    if not tagSettings then
+        AntiPushPath.Text = path .. "[❌ TagSettings NINCS]"
+        return false
+    end
+    
+    path = path .. tagSettings.Name .. " > "
+    local antiPushValue = tagSettings:FindFirstChild("AntiPush")
+    
+    if not antiPushValue then
+        AntiPushPath.Text = path .. "[❌ AntiPush NINCS]"
+        return false
+    end
+    
+    path = path .. "AntiPush"
+    local hasAntiPush = (antiPushValue.Value == true or antiPushValue.Value == 1)
+    
+    AntiPushPath.Text = path .. (hasAntiPush and " ✅" or " ❌")
+    return hasAntiPush
+end
+
+local function createItemLabel(name, index)
+    local ItemFrame = Instance.new("Frame")
+    ItemFrame.Name = "Item_" .. index
+    ItemFrame.Parent = ScrollFrame
+    ItemFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+    ItemFrame.Size = UDim2.new(1, 0, 0, 35)
+    
+    local ItemCorner = Instance.new("UICorner")
+    ItemCorner.CornerRadius = UDim.new(0, 8)
+    ItemCorner.Parent = ItemFrame
+    
+    local ItemLabel = Instance.new("TextLabel")
+    ItemLabel.Parent = ItemFrame
+    ItemLabel.BackgroundTransparency = 1
+    ItemLabel.Size = UDim2.new(1, -10, 1, 0)
+    ItemLabel.Position = UDim2.new(0, 10, 0, 0)
+    ItemLabel.Font = Enum.Font.Gotham
+    ItemLabel.Text = "🎒 " .. name
+    ItemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ItemLabel.TextSize = 14
+    ItemLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    return ItemFrame
+end
+
+local function clearInventoryList()
+    for _, child in pairs(ScrollFrame:GetChildren()) do
+        if child:IsA("Frame") and child.Name:match("Item_") then
+            child:Destroy()
+        end
+    end
+end
+
+local function updateDisplay(player)
+    if not player or not player.Parent then return end
+    
+    Title.Text = "👤 " .. player.Name .. " - Inventory + AntiPush"
+    
+    -- AntiPush ellenőrzés
+    checkAntiPush(player)
+    
+    -- Backpack lista
+    clearInventoryList()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        local items = backpack:GetChildren()
+        for i, item in pairs(items) do
+            if item:IsA("Tool") or item:IsA("HopperBin") then
+                createItemLabel(item.Name, i)
+            end
+        end
+    end
+    
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 10)
+end
+
+local function selectPlayer(newPlayer)
+    if highlight then
+        highlight:Destroy()
+    end
+    
+    selectedPlayer = newPlayer
+    if selectedPlayer and selectedPlayer.Character then
+        highlight = Instance.new("Highlight")
+        highlight.Parent = selectedPlayer.Character
+        highlight.FillColor = Color3.fromRGB(0, 162, 255)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineColor = Color3.fromRGB(0, 162, 255)
+    end
+    
+    updateDisplay(selectedPlayer)
+end
+
+local function deselectPlayer()
+    if highlight then
+        highlight:Destroy()
+        highlight = nil
+    end
+    selectedPlayer = nil
+    Title.Text = "🎒 Inventory + 🔍 AntiPush Viewer"
+    AntiPushPath.Text = "Players > Név > TagSettings > AntiPush"
+    clearInventoryList()
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+end
+
+-- ESEMÉNYEK
+CloseButton.MouseButton1Click:Connect(deselectPlayer)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.M then
+        guiOpen = not guiOpen
+        MainFrame.Visible = guiOpen
+        if not guiOpen then
+            deselectPlayer()
+        end
+    end
+end)
+
+Mouse.Button1Down:Connect(function()
+    if not guiOpen then return end
+    
+    local target = Mouse.Target
+    if target then
+        local player = getPlayerFromPart(target)
+        if player then
+            selectPlayer(player)
+        else
+            deselectPlayer()
+        end
+    end
+end)
+
+-- Frissítés
+spawn(function()
+    while wait(1) do
+        if selectedPlayer then
+            updateDisplay(selectedPlayer)
+        end
+    end
+end)
+
+print("✅ BACKPACK + AntiPush VIEWER!")
+print("📋 M = Megnyitás")
+print("🖱️ Bal klikk játékoson = Backpack + AntiPush útvonal!")
