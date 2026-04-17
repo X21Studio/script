@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local enabled = false
 local highlights = {}
 
---// VIP CHECK
+--// VIP CHECK (NEM NYÚLUNK HOZZÁ)
 local function isPlayerVIP(player)
     local tag = player:FindFirstChild("IsVIP")
     if tag and tag:IsA("BoolValue") and tag.Value == true then
@@ -32,19 +32,21 @@ local function isPlayerVIP(player)
     return false
 end
 
---// MOD CHECK (HDAdminStarterCharacter)
+--// MOD CHECK (HD ADMIN - HELYESÍTETT)
 local function isMod(player)
-    local char = player.Character
-    if not char then return false end
-
-    -- név alapú check (HD admin sokszor így spawnolja)
-    if char:FindFirstChild("HDAdminStarterCharacter") then
+    -- leggyakoribb HD Admin módszer: Attributes
+    local rank = player:GetAttribute("HDAdminRank")
+    if rank == "Mod" then
         return true
     end
 
-    -- extra safety: név string check is
-    if player.Name == "HDAdminStarterCharacter" then
-        return true
+    -- fallback: leaderstats rank
+    local ls = player:FindFirstChild("leaderstats")
+    if ls then
+        local r = ls:FindFirstChild("Rank")
+        if r and r.Value == "Mod" then
+            return true
+        end
     end
 
     return false
