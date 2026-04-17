@@ -1,0 +1,317 @@
+-- HACKER Player Notes v10.2 (VISUAL UPGRADE)
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local notes = {}
+local STORAGE_FILE = "HackerNotes_v10.json"
+local noteMode = false
+local currentTarget = nil
+local gui = nil
+local mouse = player:GetMouse()
+local highlight = nil
+
+-- LOAD
+local function loadNotes()
+    local success, err = pcall(function()
+        if isfile and isfile(STORAGE_FILE) then
+            local data = readfile(STORAGE_FILE)
+            notes = HttpService:JSONDecode(data)
+            print("✓ Loaded:", #notes, "notes")
+        else
+            print("⚠ No file found")
+        end
+    end)
+
+    if not success then
+        warn("LOAD ERROR:", err)
+        notes = {}
+    end
+end
+
+-- SAVE
+local function saveNotes()
+    local success, err = pcall(function()
+        writefile(STORAGE_FILE, HttpService:JSONEncode(notes))
+    end)
+
+    if not success then
+        warn("SAVE ERROR:", err)
+    end
+end
+
+loadNotes()
+
+-- HIGHLIGHT
+local function createHighlight(targetPlayer)
+    if highlight then
+        pcall(function() highlight:Destroy() end)
+    end
+
+    if targetPlayer and targetPlayer.Character then
+        highlight = Instance.new("Highlight")
+        highlight.FillColor = Color3.fromRGB(0, 100, 50)
+        highlight.OutlineColor = Color3.fromRGB(0, 255, 100)
+        highlight.FillTransparency = 0.6
+        highlight.OutlineTransparency = 0.1
+        highlight.Parent = targetPlayer.Character
+    end
+end
+
+-- ADVANCED GRADIENT + EFFECTS
+local function createGradient(parent)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(15, 15, 25)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 25, 40)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 20))
+    }
+    gradient.Rotation = 45
+    gradient.Parent = parent
+end
+
+local function addGlow(parent)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 200, 100)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.3
+    stroke.Parent = parent
+    
+    local glow = Instance.new("UIStroke")
+    glow.Color = Color3.fromRGB(0, 255, 120)
+    glow.Thickness = 4
+    glow.Transparency = 0.7
+    glow.Parent = parent
+end
+
+-- GUI
+local function createGUI()
+    if gui then return end
+
+    gui = Instance.new("ScreenGui")
+    gui.Name = "HackerNotesV10"
+    gui.ResetOnSpawn = false
+    gui.Parent = playerGui
+
+    local window = Instance.new("Frame")
+    window.Name = "Window"
+    window.Size = UDim2.new(0, 700, 0, 600)
+    window.Position = UDim2.new(0.5, -350, 0.5, -300)
+    window.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+    window.Active = true
+    window.Draggable = true
+    window.Parent = gui
+
+    Instance.new("UICorner", window).CornerRadius = UDim.new(0, 20)
+
+    -- MAIN BACKGROUND GRADIENT
+    createGradient(window)
+    addGlow(window)
+
+    -- HEADER
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 65)
+    header.BackgroundColor3 = Color3.fromRGB(8, 8, 16)
+    header.Parent = window
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 20)
+
+    createGradient(header)
+    
+    local headerStroke = Instance.new("UIStroke")
+    headerStroke.Color = Color3.fromRGB(0, 220, 120)
+    headerStroke.Thickness = 1.5
+    headerStroke.Parent = header
+
+    -- TITLE
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0, 300, 1, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "💀 HACKER NOTES v10.2 💀"
+    title.TextColor3 = Color3.fromRGB(0, 255, 120)
+    title.Font = Enum.Font.Code
+    title.TextSize = 22
+    title.TextStrokeTransparency = 0.8
+    title.TextStrokeColor3 = Color3.fromRGB(0, 200, 80)
+    title.Parent = header
+
+    -- CLOSE BUTTON
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 40, 0, 40)
+    closeBtn.Position = UDim2.new(1, -50, 0, 12)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.new(1,1,1)
+    closeBtn.Font = Enum.Font.Code
+    closeBtn.TextSize = 20
+    closeBtn.Parent = header
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 10)
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        noteMode = false
+        if highlight then highlight:Destroy() end
+        if gui then gui:Destroy() end
+        gui = nil
+        currentTarget = nil
+    end)
+
+    -- TARGET LABEL
+    local targetLabel = Instance.new("TextLabel")
+    targetLabel.Size = UDim2.new(1, -30, 0, 50)
+    targetLabel.Position = UDim2.new(0, 15, 0, 85)
+    targetLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    targetLabel.Text = "🎯 CLICK A PLAYER TO START"
+    targetLabel.TextColor3 = Color3.fromRGB(150, 180, 220)
+    targetLabel.Font = Enum.Font.Code
+    targetLabel.TextSize = 16
+    targetLabel.Parent = window
+    Instance.new("UICorner", targetLabel).CornerRadius = UDim.new(0, 12)
+
+    createGradient(targetLabel)
+
+    -- STATUS INDICATOR
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(0, 120, 0, 30)
+    status.Position = UDim2.new(1, -140, 0, 90)
+    status.BackgroundTransparency = 1
+    status.Text = "OFFLINE"
+    status.TextColor3 = Color3.fromRGB(255, 100, 100)
+    status.Font = Enum.Font.Code
+    status.TextSize = 14
+    status.Parent = window
+
+    -- EDITOR
+    local editorFrame = Instance.new("ScrollingFrame")
+    editorFrame.Size = UDim2.new(1, -30, 1, -170)
+    editorFrame.Position = UDim2.new(0, 15, 0, 145)
+    editorFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+    editorFrame.BorderSizePixel = 0
+    editorFrame.ScrollBarThickness = 8
+    editorFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 200, 100)
+    editorFrame.Parent = window
+    Instance.new("UICorner", editorFrame).CornerRadius = UDim.new(0, 12)
+
+    createGradient(editorFrame)
+
+    local editor = Instance.new("TextBox")
+    editor.Size = UDim2.new(1, -10, 1, -10)
+    editor.Position = UDim2.new(0, 5, 0, 5)
+    editor.BackgroundTransparency = 1
+    editor.MultiLine = true
+    editor.ClearTextOnFocus = false
+    editor.TextXAlignment = Enum.TextXAlignment.Left
+    editor.TextYAlignment = Enum.TextYAlignment.Top
+    editor.TextColor3 = Color3.new(1,1,1)
+    editor.PlaceholderText = "Start typing your notes here... Notes auto-save every 10s"
+    editor.PlaceholderColor3 = Color3.fromRGB(120, 140, 160)
+    editor.Font = Enum.Font.Code
+    editor.TextSize = 15
+    editor.TextStrokeTransparency = 0.9
+    editor.Parent = editorFrame
+
+    editorFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    editorFrame:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(function()
+        editorFrame.CanvasSize = UDim2.new(0, 0, 0, editor.TextBounds.Y + 20)
+    end)
+
+    -- INFO BAR
+    local infoBar = Instance.new("Frame")
+    infoBar.Size = UDim2.new(1, -30, 0, 35)
+    infoBar.Position = UDim2.new(0, 15, 1, -55)
+    infoBar.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    infoBar.Parent = window
+    Instance.new("UICorner", infoBar).CornerRadius = UDim.new(0, 10)
+
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, 0, 1, 0)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Text = "P = Toggle | Auto-save enabled | Notes: " .. #notes
+    infoLabel.TextColor3 = Color3.fromRGB(100, 180, 255)
+    infoLabel.Font = Enum.Font.Code
+    infoLabel.TextSize = 13
+    infoLabel.TextXAlignment = Enum.TextXAlignment.Center
+    infoLabel.Parent = infoBar
+
+    -- SAVE ON CHANGE
+    editor:GetPropertyChangedSignal("Text"):Connect(function()
+        if currentTarget then
+            local id = tostring(currentTarget.UserId)
+            notes[id] = editor.Text
+            status.Text = "SAVED"
+            status.TextColor3 = Color3.fromRGB(100, 255, 100)
+            task.wait(1)
+            status.Text = "ONLINE"
+            status.TextColor3 = Color3.fromRGB(100, 255, 100)
+            saveNotes()
+        end
+    end)
+
+    return editor, targetLabel, status
+end
+
+-- TOGGLE
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+
+    if input.KeyCode == Enum.KeyCode.P then
+        noteMode = not noteMode
+
+        if noteMode then
+            createGUI()
+        else
+            if highlight then highlight:Destroy() end
+            if gui then gui:Destroy() end
+            gui = nil
+            currentTarget = nil
+        end
+    end
+end)
+
+-- CLICK SELECT
+mouse.Button1Down:Connect(function()
+    if not noteMode then return end
+
+    local camera = workspace.CurrentCamera
+    local ray = camera:ScreenPointToRay(mouse.X, mouse.Y)
+
+    local result = workspace:Raycast(ray.Origin, ray.Direction * 500)
+
+    if result then
+        local char = result.Instance:FindFirstAncestorOfClass("Model")
+        if char and char ~= player.Character then
+            local targetPlayer = Players:GetPlayerFromCharacter(char)
+
+            if targetPlayer then
+                currentTarget = targetPlayer
+                createHighlight(targetPlayer)
+
+                local window = gui.Window
+                local editor = window:FindFirstChild("ScrollingFrame", true):FindFirstChildOfClass("TextBox")
+                local targetLabel = window:FindFirstChildOfClass("TextLabel")
+                local status = window:FindFirstChild("TextLabel", true)
+
+                local id = tostring(targetPlayer.UserId)
+
+                targetLabel.Text = "🎯 TARGET: " .. targetPlayer.Name .. " | ID: " .. id
+                targetLabel.TextColor3 = Color3.fromRGB(0, 255, 120)
+                editor.Text = notes[id] or ""
+                status.Text = "ONLINE"
+                status.TextColor3 = Color3.fromRGB(100, 255, 100)
+            end
+        end
+    end
+end)
+
+-- AUTO SAVE
+task.spawn(function()
+    while true do
+        task.wait(10)
+        saveNotes()
+    end
+end)
+
+print("=== HACKER NOTES v10.2 (VISUAL UPGRADE) LOADED ===")
