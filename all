@@ -1,7 +1,8 @@
 local scripts = {
     "https://raw.githubusercontent.com/X21Studio/script/main/SystemBroken",
     "https://raw.githubusercontent.com/X21Studio/script/main/Player%20Notes",
-    "https://raw.githubusercontent.com/X21Studio/script/main/vip-esp"
+    "https://raw.githubusercontent.com/X21Studio/script/main/vip-esp",
+    "https://raw.githubusercontent.com/X21Studio/script/main/Backpack%20%2B%20AntiPush"
 }
 
 for _, url in ipairs(scripts) do
