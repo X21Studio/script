@@ -1,0 +1,101 @@
+--// SERVICES
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+--// VARS
+local LocalPlayer = Players.LocalPlayer
+local enabled = false
+local highlights = {}
+
+--// FUNCTION: VIP CHECK
+local function isPlayerVIP(player)
+    -- 1. Player alatt
+    local tag = player:FindFirstChild("IsVIP")
+    if tag and tag:IsA("BoolValue") and tag.Value == true then
+        return true
+    end
+
+    -- 2. leaderstats alatt
+    local ls = player:FindFirstChild("leaderstats")
+    if ls then
+        local tag2 = ls:FindFirstChild("IsVIP")
+        if tag2 and tag2:IsA("BoolValue") and tag2.Value == true then
+            return true
+        end
+    end
+
+    -- 3. Character alatt
+    if player.Character then
+        local tag3 = player.Character:FindFirstChild("IsVIP")
+        if tag3 and tag3:IsA("BoolValue") and tag3.Value == true then
+            return true
+        end
+    end
+
+    return false
+end
+
+--// FUNCTION: ADD HIGHLIGHT
+local function addHighlight(player)
+    if not player.Character then return end
+    if highlights[player] then return end
+
+    local hl = Instance.new("Highlight")
+    hl.FillColor = Color3.fromRGB(255, 215, 0) -- arany
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.FillTransparency = 0.4
+    hl.Parent = player.Character
+
+    highlights[player] = hl
+end
+
+--// FUNCTION: REMOVE HIGHLIGHT
+local function removeHighlight(player)
+    if highlights[player] then
+        highlights[player]:Destroy()
+        highlights[player] = nil
+    end
+end
+
+--// FUNCTION: UPDATE ALL
+local function updateAll()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if enabled and isPlayerVIP(player) then
+                addHighlight(player)
+            else
+                removeHighlight(player)
+            end
+        end
+    end
+end
+
+--// PLAYER ADDED
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        updateAll()
+    end)
+end)
+
+--// EXISTING PLAYERS
+for _, player in pairs(Players:GetPlayers()) do
+    if player.Character then
+        player.CharacterAdded:Connect(function()
+            task.wait(1)
+            updateAll()
+        end)
+    end
+end
+
+--// KEYBIND (K)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+
+    if input.KeyCode == Enum.KeyCode.K then
+        enabled = not enabled
+        print("VIP Highlight:", enabled and "ON" or "OFF")
+
+        updateAll()
+    end
+end)
