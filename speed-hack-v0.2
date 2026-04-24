@@ -1,0 +1,181 @@
+-- Fixed Xenos injectable speed hack script
+-- Works on all Roblox games, J key toggle
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local guiVisible = false
+local speedEnabled = false
+local speedMultiplier = 2.0
+local humanoid = nil
+
+local gui = nil
+
+-- Speed hack function (loop based for reliability)
+local speedConnection = nil
+local function toggleSpeed()
+    if speedEnabled then
+        if speedConnection then speedConnection:Disconnect() end
+        
+        speedConnection = RunService.Heartbeat:Connect(function()
+            if humanoid and humanoid.Parent then
+                humanoid.WalkSpeed = 16 * speedMultiplier
+            end
+        end)
+    else
+        if speedConnection then
+            speedConnection:Disconnect()
+            speedConnection = nil
+        end
+        if humanoid and humanoid.Parent then
+            humanoid.WalkSpeed = 16
+        end
+    end
+end
+
+-- Update humanoid reference
+local function updateHumanoid()
+    if player.Character then
+        humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    end
+end
+
+-- Create GUI
+local function createGUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SpeedHack"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 260, 0, 160)
+    mainFrame.Position = UDim2.new(0.5, -130, 0.5, -80)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Visible = false
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+    
+    local uicorner = Instance.new("UICorner")
+    uicorner.CornerRadius = UDim.new(0, 8)
+    uicorner.Parent = mainFrame
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 35)
+    title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    title.BorderSizePixel = 0
+    title.Text = "Speed Hack v2.0"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextScaled = true
+    title.Font = Enum.Font.GothamBold
+    title.Parent = mainFrame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 8)
+    titleCorner.Parent = title
+    
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0.9, 0, 0, 40)
+    toggleBtn.Position = UDim2.new(0.05, 0, 0, 45)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+    toggleBtn.Text = "SPEED: OFF"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.TextScaled = true
+    toggleBtn.Font = Enum.Font.GothamSemibold
+    toggleBtn.Parent = mainFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = toggleBtn
+    
+    local speedBox = Instance.new("TextBox")
+    speedBox.Size = UDim2.new(0.9, 0, 0, 35)
+    speedBox.Position = UDim2.new(0.05, 0, 0, 95)
+    speedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    speedBox.Text = "2.0"
+    speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    speedBox.TextScaled = true
+    speedBox.Font = Enum.Font.Gotham
+    speedBox.PlaceholderText = "Enter speed (0.5-16)"
+    speedBox.Parent = mainFrame
+    
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 6)
+    boxCorner.Parent = speedBox
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+    statusLabel.Position = UDim2.new(0.05, 0, 0, 135)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "Press J to toggle GUI"
+    statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+    statusLabel.TextScaled = true
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Parent = mainFrame
+    
+    -- Toggle button
+    toggleBtn.MouseButton1Click:Connect(function()
+        speedEnabled = not speedEnabled
+        if speedEnabled then
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 220, 50)
+            toggleBtn.Text = "SPEED: ON"
+            statusLabel.Text = "Speed active: " .. speedMultiplier .. "x"
+        else
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+            toggleBtn.Text = "SPEED: OFF"
+            statusLabel.Text = "Speed disabled"
+        end
+        toggleSpeed()
+    end)
+    
+    -- Speed input
+    speedBox.FocusLost:Connect(function(enterPressed)
+        local num = tonumber(speedBox.Text)
+        if num and num >= 0.1 and num <= 50 then
+            speedMultiplier = num
+            speedBox.Text = tostring(speedMultiplier)
+            statusLabel.Text = "Speed set: " .. speedMultiplier .. "x"
+            if speedEnabled then
+                toggleSpeed()
+            end
+        else
+            speedBox.Text = tostring(speedMultiplier)
+        end
+    end)
+    
+    return screenGui
+end
+
+-- J key handler
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.J then
+        guiVisible = not guiVisible
+        if not gui then
+            gui = createGUI()
+        end
+        if gui:FindFirstChild("MainFrame") then
+            gui.MainFrame.Visible = guiVisible
+        end
+    end
+end)
+
+-- Character handling
+player.CharacterAdded:Connect(function(char)
+    updateHumanoid()
+    wait(0.5)
+    if speedEnabled then
+        toggleSpeed()
+    end
+end)
+
+if player.Character then
+    updateHumanoid()
+end
+
+print("=== SPEED HACK LOADED ===")
+print("Press J to open/close GUI")
+print("=== READY ===")
