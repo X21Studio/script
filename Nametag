@@ -64,7 +64,7 @@ local function updateDisplayAndLeaderboard(enabled)
     
     -- Nametag Display frissítése
     if enabled then
-        displayText.Text = originalDisplayText .. " " .. badgeChar
+        displayText.Text = originalDisplayText .. badgeChar
     else
         displayText.Text = originalDisplayText
     end
@@ -72,7 +72,7 @@ local function updateDisplayAndLeaderboard(enabled)
     -- Leaderboard TextLabel-ek frissítése
     for _, label in ipairs(leaderboardLabels) do
         if enabled then
-            label.Text = originalDisplayText .. " " .. badgeChar
+            label.Text = originalDisplayText .. badgeChar
         else
             label.Text = originalDisplayText
         end
@@ -88,7 +88,7 @@ plr:WaitForChild("PlayerGui").ChildAdded:Connect(function(child)
     if displayBadgeEnabled then
         for _, label in ipairs(leaderboardLabels) do
             if label.Text == originalDisplayText then
-                label.Text = originalDisplayText .. " " .. ""
+                label.Text = originalDisplayText .. ""
             end
         end
     end
