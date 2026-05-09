@@ -25,9 +25,74 @@ if signalsError then
 end
 
 -- Referencia a NameTags célokhoz
-local nameTags = plr:WaitForChild("PlayerGui"):WaitForChild("NameTagsGui"):WaitForChild("NameTags"):WaitForChild("Pecawec"):WaitForChild("Content"):WaitForChild("Title")
-local titleText = nameTags:WaitForChild("Text")
-local titleImageRight = nameTags:WaitForChild("ImageRight")
+local nameTags = plr:WaitForChild("PlayerGui"):WaitForChild("NameTagsGui"):WaitForChild("NameTags"):WaitForChild("Pecawec"):WaitForChild("Content")
+local titleText = nameTags:WaitForChild("Title"):WaitForChild("Text")
+local titleImageRight = nameTags:WaitForChild("Title"):WaitForChild("ImageRight")
+
+-- Referencia a Display objektumhoz
+local displayText = nameTags:WaitForChild("Display")
+local originalDisplayText = "Pecawec"
+local displayBadgeEnabled = false
+
+-- Leaderboard TextLabel-ek gyűjteménye (ahol a játékos neve megjelenik)
+local leaderboardLabels = {}
+
+-- Összegyűjti az összes olyan TextLabel-t a PlayerGui-ban, ami a játékos nevét tartalmazza
+local function collectLeaderboardLabels()
+    leaderboardLabels = {}
+    local playerName = plr.Name
+    
+    local function searchForNameLabels(instance)
+        if instance:IsA("TextLabel") or instance:IsA("TextButton") then
+            local text = instance.Text or ""
+            -- Pontos egyezés a játékos nevére
+            if text == playerName or text == originalDisplayText then
+                table.insert(leaderboardLabels, instance)
+            end
+        end
+        for _, child in ipairs(instance:GetChildren()) do
+            searchForNameLabels(child)
+        end
+    end
+    
+    searchForNameLabels(plr:WaitForChild("PlayerGui"))
+end
+
+-- Display + Leaderboard frissítése
+local function updateDisplayAndLeaderboard(enabled)
+    local badgeChar = "" -- Verified badge
+    
+    -- Nametag Display frissítése
+    if enabled then
+        displayText.Text = originalDisplayText .. " " .. badgeChar
+    else
+        displayText.Text = originalDisplayText
+    end
+    
+    -- Leaderboard TextLabel-ek frissítése
+    for _, label in ipairs(leaderboardLabels) do
+        if enabled then
+            label.Text = originalDisplayText .. " " .. badgeChar
+        else
+            label.Text = originalDisplayText
+        end
+    end
+end
+
+-- Figyelő az új leaderboard elemekre (ha dinamikusan jönnek létre)
+plr:WaitForChild("PlayerGui").ChildAdded:Connect(function(child)
+    -- Kis késleltetés, hogy a gyerek elemek is betöltődjenek
+    task.wait(0.1)
+    collectLeaderboardLabels()
+    -- Ha a badge be van kapcsolva, frissítjük az új elemeket is
+    if displayBadgeEnabled then
+        for _, label in ipairs(leaderboardLabels) do
+            if label.Text == originalDisplayText then
+                label.Text = originalDisplayText .. " " .. ""
+            end
+        end
+    end
+end)
 
 -- Helper a forrás Title objektum lekéréséhez
 local function getSourceTitle(rank)
@@ -140,6 +205,12 @@ local function applyTitle(rank)
     menuFrame.Visible = false
 end
 
+-- Display badge toggle funkció
+local function toggleDisplayBadge()
+    displayBadgeEnabled = not displayBadgeEnabled
+    updateDisplayAndLeaderboard(displayBadgeEnabled)
+end
+
 -- H menü létrehozása
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "HMenuGUI"
@@ -147,8 +218,8 @@ screenGui.Parent = plr:WaitForChild("PlayerGui")
 
 local menuFrame = Instance.new("Frame")
 menuFrame.Name = "MenuFrame"
-menuFrame.Size = UDim2.new(0, 200, 0, 250)
-menuFrame.Position = UDim2.new(0.5, -100, 0.5, -125)
+menuFrame.Size = UDim2.new(0, 200, 0, 290)
+menuFrame.Position = UDim2.new(0.5, -100, 0.5, -145)
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 menuFrame.BackgroundTransparency = 0.2
 menuFrame.BorderSizePixel = 0
@@ -199,9 +270,45 @@ for i, rank in ipairs(ranks) do
     yOffset = yOffset + 35
 end
 
+-- Display Badge ki/bekapcsoló gomb
+local badgeButton = Instance.new("TextButton")
+badgeButton.Name = "DisplayBadgeToggle"
+badgeButton.Size = UDim2.new(1, -20, 0, 30)
+badgeButton.Position = UDim2.new(0, 10, 0, yOffset)
+badgeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+badgeButton.BorderSizePixel = 0
+badgeButton.Text = "Pecawec : OFF"
+badgeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+badgeButton.TextScaled = true
+badgeButton.Font = Enum.Font.Gotham
+
+badgeButton.MouseEnter:Connect(function()
+    badgeButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+end)
+badgeButton.MouseLeave:Connect(function()
+    badgeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+end)
+
+badgeButton.MouseButton1Click:Connect(function()
+    toggleDisplayBadge()
+    if displayBadgeEnabled then
+        badgeButton.Text = "Pecawec : ON"
+        badgeButton.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+    else
+        badgeButton.Text = "Pecawec : OFF"
+        badgeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+badgeButton.Parent = menuFrame
+
 -- Toggle állapotok
 local toggled = false
 local menuOpen = false
+
+-- Leaderboard label-ek összegyűjtése induláskor
+task.wait(1) -- Várunk kicsit, hogy a GUI betöltődjön
+collectLeaderboardLabels()
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
