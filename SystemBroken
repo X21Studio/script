@@ -399,18 +399,44 @@ Background.Draggable = true
 
 TitleBarLabel.Name = "TitleBarLabel"
 TitleBarLabel.Parent = Background
-TitleBarLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-TitleBarLabel.BackgroundTransparency = 0.250
-TitleBarLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+TitleBarLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TitleBarLabel.BackgroundTransparency = 0.15
 TitleBarLabel.BorderSizePixel = 0
-TitleBarLabel.Size = UDim2.new(1, 0, 0, 30)
-TitleBarLabel.Font = Enum.Font.Unknown
+TitleBarLabel.Size = UDim2.new(1, 0, 0, 32)
+
+TitleBarLabel.Font = Enum.Font.GothamBold
 TitleBarLabel.Text = "P E C A W E C"
-TitleBarLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
+
+TitleBarLabel.TextColor3 = Color3.fromRGB(85, 255, 170)
+TitleBarLabel.TextStrokeTransparency = 0.7
 TitleBarLabel.TextScaled = true
-TitleBarLabel.TextSize = 14.000
 TitleBarLabel.TextWrapped = true
+TitleBarLabel.TextSize = 14
 TitleBarLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Parent = TitleBarLabel
+Stroke.Thickness = 1
+Stroke.Color = Color3.fromRGB(0, 255, 127)
+Stroke.Transparency = 0.4
+
+local Gradient = Instance.new("UIGradient")
+Gradient.Parent = TitleBarLabel
+Gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0,255,127)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(0,170,255))
+}
+
+local Corner = Instance.new("UICorner")
+Corner.Parent = TitleBarLabel
+Corner.CornerRadius = UDim.new(0, 8)
+
+local Line = Instance.new("Frame")
+Line.Parent = TitleBarLabel
+Line.BackgroundColor3 = Color3.fromRGB(0,255,127)
+Line.BorderSizePixel = 0
+Line.Position = UDim2.new(0,0,1,-2)
+Line.Size = UDim2.new(1,0,0,2)
 
 SectionList.Name = "SectionList"
 SectionList.Parent = Background
