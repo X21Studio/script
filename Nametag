@@ -1,0 +1,219 @@
+-- Xeno Local Script - "[" gomb toggle CmdBar + IsAdmin + hibák törlése + H menü
+local plr = game:GetService("Players").LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- CmdBar toggle
+local cmdBar = plr:WaitForChild("PlayerGui"):WaitForChild("HDAdminInterface"):WaitForChild("CmdBar")
+
+-- IsAdmin azonnali beállítása (injektáláskor)
+local isAdmin = plr:WaitForChild("IsAdmin")
+isAdmin.Value = true
+
+-- Audio -> Error törlése
+local audioFolder = ReplicatedStorage:FindFirstChild("HDAdminHDClient"):FindFirstChild("Audio")
+local audioError = audioFolder:FindFirstChild("Error")
+if audioError then
+    audioError:Destroy()
+end
+
+-- Signals -> Error törlése
+local signalsFolder = ReplicatedStorage:FindFirstChild("HDAdminHDClient"):FindFirstChild("Signals")
+local signalsError = signalsFolder:FindFirstChild("Error")
+if signalsError then
+    signalsError:Destroy()
+end
+
+-- Referencia a NameTags célokhoz
+local nameTags = plr:WaitForChild("PlayerGui"):WaitForChild("NameTagsGui"):WaitForChild("NameTags"):WaitForChild("Pecawec"):WaitForChild("Content"):WaitForChild("Title")
+local titleText = nameTags:WaitForChild("Text")
+local titleImageRight = nameTags:WaitForChild("ImageRight")
+
+-- Helper a forrás Title objektum lekéréséhez
+local function getSourceTitle(rank)
+    local basePath = plr:WaitForChild("PlayerGui"):WaitForChild("MainUI"):WaitForChild("RightUI"):WaitForChild("Content"):WaitForChild("Menus"):WaitForChild("Lists"):WaitForChild("Nametag"):WaitForChild("Titles")
+    
+    local rankFolders = {
+        ["Tulajdonos"] = "Fondateur",
+        ["Developer"] = "Responsable Staff",
+        ["Admin"] = "Administrateur",
+        ["Moderator"] = "Moderateur",
+        ["Content Creator"] = "Content Creator",
+        ["VIP"] = "VIP"
+    }
+    
+    local folderName = rankFolders[rank]
+    if not folderName then return nil end
+    
+    local titleFolder = basePath:FindFirstChild(folderName)
+    if not titleFolder then return nil end
+    
+    local theText = titleFolder:FindFirstChild("TheText")
+    if not theText then return nil end
+    
+    return theText
+end
+
+local currentRank = nil
+local gradConnections = {}
+
+local function clearGradConnections()
+    for _, conn in ipairs(gradConnections) do
+        conn:Disconnect()
+    end
+    gradConnections = {}
+end
+
+local function syncGradientToSource(sourceGrad, targetGrad)
+    targetGrad.Color = sourceGrad.Color
+    targetGrad.Rotation = sourceGrad.Rotation
+    targetGrad.Offset = sourceGrad.Offset
+    targetGrad.Transparency = sourceGrad.Transparency
+    targetGrad.Enabled = sourceGrad.Enabled
+end
+
+local function syncImageToSource(sourceImage, targetImage)
+    targetImage.Image = sourceImage.Image
+    targetImage.ImageColor3 = sourceImage.ImageColor3
+    targetImage.ImageTransparency = sourceImage.ImageTransparency
+    targetImage.ImageRectOffset = sourceImage.ImageRectOffset
+    targetImage.ImageRectSize = sourceImage.ImageRectSize
+    targetImage.ScaleType = sourceImage.ScaleType
+    targetImage.SliceCenter = sourceImage.SliceCenter
+    targetImage.SliceScale = sourceImage.SliceScale
+    targetImage.TileSize = sourceImage.TileSize
+end
+
+local function setupGradientWatcher(sourceGrad, targetGrad)
+    local props = {"Color", "Rotation", "Offset", "Transparency", "Enabled"}
+    for _, prop in ipairs(props) do
+        local conn = sourceGrad:GetPropertyChangedSignal(prop):Connect(function()
+            syncGradientToSource(sourceGrad, targetGrad)
+        end)
+        table.insert(gradConnections, conn)
+    end
+end
+
+local function setupImageWatcher(sourceImage, targetImage)
+    local props = {"Image", "ImageColor3", "ImageTransparency", "ImageRectOffset", "ImageRectSize", "ScaleType", "SliceCenter", "SliceScale", "TileSize"}
+    for _, prop in ipairs(props) do
+        local conn = sourceImage:GetPropertyChangedSignal(prop):Connect(function()
+            syncImageToSource(sourceImage, targetImage)
+        end)
+        table.insert(gradConnections, conn)
+    end
+end
+
+local function applyTitle(rank)
+    currentRank = rank
+    titleText.Text = rank
+    
+    -- Régi figyelők törlése
+    clearGradConnections()
+    
+    -- Forrás Title mappa lekérése
+    local sourceTitle = getSourceTitle(rank)
+    if not sourceTitle then return end
+    
+    -- --- UIGradient ---
+    local existingGrad = titleText:FindFirstChild("UIGradient")
+    if existingGrad then
+        existingGrad:Destroy()
+    end
+    
+    local sourceGrad = sourceTitle:FindFirstChild("TitlesName"):FindFirstChild("UIGradient")
+    if sourceGrad then
+        local newGrad = sourceGrad:Clone()
+        newGrad.Parent = titleText
+        syncGradientToSource(sourceGrad, newGrad)
+        setupGradientWatcher(sourceGrad, newGrad)
+    end
+    
+    -- --- ImageRight ---
+    local sourceImageRight = sourceTitle:FindFirstChild("ImageRight")
+    if sourceImageRight then
+        syncImageToSource(sourceImageRight, titleImageRight)
+        setupImageWatcher(sourceImageRight, titleImageRight)
+    end
+    
+    -- Bezárjuk a menüt
+    menuFrame.Visible = false
+end
+
+-- H menü létrehozása
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HMenuGUI"
+screenGui.Parent = plr:WaitForChild("PlayerGui")
+
+local menuFrame = Instance.new("Frame")
+menuFrame.Name = "MenuFrame"
+menuFrame.Size = UDim2.new(0, 200, 0, 250)
+menuFrame.Position = UDim2.new(0.5, -100, 0.5, -125)
+menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+menuFrame.BackgroundTransparency = 0.2
+menuFrame.BorderSizePixel = 0
+menuFrame.Visible = false
+menuFrame.Parent = screenGui
+
+-- Cím
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleLabel.BorderSizePixel = 0
+titleLabel.Text = "Admin Menü"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = menuFrame
+
+-- Gombok létrehozása
+local ranks = {"Tulajdonos", "Developer", "Admin", "Moderator", "Content Creator", "VIP"}
+local yOffset = 35
+
+for i, rank in ipairs(ranks) do
+    local button = Instance.new("TextButton")
+    button.Name = rank:gsub("%s+", "")
+    button.Size = UDim2.new(1, -20, 0, 30)
+    button.Position = UDim2.new(0, 10, 0, yOffset)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    button.BorderSizePixel = 0
+    button.Text = rank
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextScaled = true
+    button.Font = Enum.Font.Gotham
+    
+    -- Gomb hover effekt
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    end)
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end)
+    
+    button.MouseButton1Click:Connect(function()
+        applyTitle(rank)
+    end)
+    
+    button.Parent = menuFrame
+    yOffset = yOffset + 35
+end
+
+-- Toggle állapotok
+local toggled = false
+local menuOpen = false
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.LeftBracket then
+        toggled = not toggled
+        cmdBar.Visible = toggled
+    elseif input.KeyCode == Enum.KeyCode.H then
+        menuOpen = not menuOpen
+        menuFrame.Visible = menuOpen
+    end
+end)
+
+-- Kezdetben rejtve
+cmdBar.Visible = false
