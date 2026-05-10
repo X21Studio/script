@@ -25,13 +25,21 @@ if signalsError then
 end
 
 -- Referencia a NameTags célokhoz
-local nameTags = plr:WaitForChild("PlayerGui"):WaitForChild("NameTagsGui"):WaitForChild("NameTags"):WaitForChild("Pecawec"):WaitForChild("Content")
-local titleText = nameTags:WaitForChild("Title"):WaitForChild("Text")
-local titleImageRight = nameTags:WaitForChild("Title"):WaitForChild("ImageRight")
+local nameTags, titleText, titleImageRight, displayText
+local playerDisplayName = plr.Name -- A megjelenítéshez használt név
+local uiPath = "Pecawec" -- Az eredeti UI elérési útvonal
 
--- Referencia a Display objektumhoz
-local displayText = nameTags:WaitForChild("Display")
-local originalDisplayText = "Pecawec"
+local success, err = pcall(function()
+    nameTags = plr:WaitForChild("PlayerGui", 5):WaitForChild("NameTagsGui", 5):WaitForChild("NameTags", 5):WaitForChild(uiPath, 5):WaitForChild("Content", 5)
+    titleText = nameTags:WaitForChild("Title", 5):WaitForChild("Text", 5)
+    titleImageRight = nameTags:WaitForChild("Title", 5):WaitForChild("ImageRight", 5)
+    displayText = nameTags:WaitForChild("Display", 5)
+end)
+
+if not success then
+    warn("NameTag GUI elemek nem találhatók! Error:", err)
+    error("Script inicializáció sikertelen")
+end
 local displayBadgeEnabled = false
 
 -- Leaderboard TextLabel-ek gyűjteménye (ahol a játékos neve megjelenik)
@@ -40,55 +48,70 @@ local leaderboardLabels = {}
 -- Összegyűjti az összes olyan TextLabel-t a PlayerGui-ban, ami a játékos nevét tartalmazza
 local function collectLeaderboardLabels()
     leaderboardLabels = {}
-    local playerName = plr.Name
+    local maxDepth = 10 -- Mélység korlátozás
     
-    local function searchForNameLabels(instance)
+    local function searchForNameLabels(instance, depth)
+        if depth > maxDepth then return end
+        
         if instance:IsA("TextLabel") or instance:IsA("TextButton") then
             local text = instance.Text or ""
-            -- Pontos egyezés a játékos nevére
-            if text == playerName or text == originalDisplayText then
+            -- Keress az eredeti UI név alapján
+            if text == uiPath or text:find(playerDisplayName) then
                 table.insert(leaderboardLabels, instance)
             end
         end
         for _, child in ipairs(instance:GetChildren()) do
-            searchForNameLabels(child)
+            searchForNameLabels(child, depth + 1)
         end
     end
     
-    searchForNameLabels(plr:WaitForChild("PlayerGui"))
+    local success, err = pcall(function()
+        searchForNameLabels(plr:WaitForChild("PlayerGui"), 0)
+    end)
+    if not success then
+        warn("collectLeaderboardLabels error:", err)
+    end
 end
 
--- Display + Leaderboard frissítése
+-- Display + Leaderboard frissítése (optimalizált)
 local function updateDisplayAndLeaderboard(enabled)
     local badgeChar = "" -- Verified badge
+
+    if not displayText then return end
     
     -- Nametag Display frissítése
-    if enabled then
-        displayText.Text = originalDisplayText .. badgeChar
-    else
-        displayText.Text = originalDisplayText
+    local newText = enabled and (playerDisplayName .. badgeChar) or playerDisplayName
+    if displayText.Text ~= newText then
+        displayText.Text = newText
     end
     
-    -- Leaderboard TextLabel-ek frissítése
+    -- Leaderboard TextLabel-ek frissítése (csak azokat, amelyek szükségesek)
     for _, label in ipairs(leaderboardLabels) do
-        if enabled then
-            label.Text = originalDisplayText .. badgeChar
-        else
-            label.Text = originalDisplayText
+        local currentText = label.Text
+        local targetText = enabled and (playerDisplayName .. badgeChar) or playerDisplayName
+        if currentText ~= targetText and (currentText == playerDisplayName or currentText:find(playerDisplayName)) then
+            label.Text = targetText
         end
     end
 end
 
--- Figyelő az új leaderboard elemekre (ha dinamikusan jönnek létre)
+-- Figyelő az új leaderboard elemekre (ha dinamikusan jönnek létre) - DEBOUNCED
+local lastCollectTime = 0
+local collectCooldown = 0.5 -- 500ms között max egy keresés
+
 plr:WaitForChild("PlayerGui").ChildAdded:Connect(function(child)
     -- Kis késleltetés, hogy a gyerek elemek is betöltődjenek
-    task.wait(0.1)
-    collectLeaderboardLabels()
-    -- Ha a badge be van kapcsolva, frissítjük az új elemeket is
-    if displayBadgeEnabled then
-        for _, label in ipairs(leaderboardLabels) do
-            if label.Text == originalDisplayText then
-                label.Text = originalDisplayText .. ""
+    local currentTime = tick()
+    if currentTime - lastCollectTime >= collectCooldown then
+        lastCollectTime = currentTime
+        task.wait(0.1)
+        collectLeaderboardLabels()
+        -- Ha a badge be van kapcsolva, frissítjük az új elemeket is
+        if displayBadgeEnabled then
+            for _, label in ipairs(leaderboardLabels) do
+                if label.Text == originalDisplayText then
+                    label.Text = originalDisplayText .. ""
+                end
             end
         end
     end
@@ -277,7 +300,7 @@ badgeButton.Size = UDim2.new(1, -20, 0, 30)
 badgeButton.Position = UDim2.new(0, 10, 0, yOffset)
 badgeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 badgeButton.BorderSizePixel = 0
-badgeButton.Text = "Pecawec : OFF"
+badgeButton.Text = playerDisplayName .. " : OFF"
 badgeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 badgeButton.TextScaled = true
 badgeButton.Font = Enum.Font.Gotham
@@ -292,10 +315,10 @@ end)
 badgeButton.MouseButton1Click:Connect(function()
     toggleDisplayBadge()
     if displayBadgeEnabled then
-        badgeButton.Text = "Pecawec : ON"
+        badgeButton.Text = playerDisplayName .. " : ON"
         badgeButton.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
     else
-        badgeButton.Text = "Pecawec : OFF"
+        badgeButton.Text = playerDisplayName .. " : OFF"
         badgeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     end
 end)
@@ -306,9 +329,11 @@ badgeButton.Parent = menuFrame
 local toggled = false
 local menuOpen = false
 
--- Leaderboard label-ek összegyűjtése induláskor
-task.wait(1) -- Várunk kicsit, hogy a GUI betöltődjön
-collectLeaderboardLabels()
+-- Leaderboard label-ek összegyűjtése induláskor (async)
+task.spawn(function()
+    task.wait(2) -- Várunk 2 másodpercet, hogy a GUI teljes mértékben betöltődjön
+    collectLeaderboardLabels()
+end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
