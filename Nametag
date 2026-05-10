@@ -26,8 +26,10 @@ end
 
 -- Referencia a NameTags célokhoz
 local nameTags, titleText, titleImageRight, displayText
-local playerDisplayName = plr.Name -- A megjelenítéshez használt név
-local uiPath = plr.Name -- Az injektáló játékos neve (saját nametag)
+local username = plr.Name -- Az tényleges username (hierarchia kereséséhez)
+local displayName = plr.Name -- A megjelenítéshez használt név (MÓDOSÍTSD EZT AZ INJEKTÁLÁSKOR, ha más, mint a username)
+local playerDisplayName = displayName -- A megjelenítéshez
+local uiPath = username -- Az username, amit a hierarchiához használunk
 
 local success, err = pcall(function()
     nameTags = plr:WaitForChild("PlayerGui", 5):WaitForChild("NameTagsGui", 5):WaitForChild("NameTags", 5):WaitForChild(uiPath, 5):WaitForChild("Content", 5)
