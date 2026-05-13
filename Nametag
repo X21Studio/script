@@ -103,19 +103,11 @@ local collectCooldown = 0.5 -- 500ms között max egy keresés
 
 plr:WaitForChild("PlayerGui").ChildAdded:Connect(function(child)
     -- Kis késleltetés, hogy a gyerek elemek is betöltődjenek
-    local currentTime = tick()
+    local currentTime = os.clock()
     if currentTime - lastCollectTime >= collectCooldown then
         lastCollectTime = currentTime
         task.wait(0.1)
         collectLeaderboardLabels()
-        -- Ha a badge be van kapcsolva, frissítjük az új elemeket is
-        if displayBadgeEnabled then
-            for _, label in ipairs(leaderboardLabels) do
-                if label.Text == originalDisplayText then
-                    label.Text = originalDisplayText .. ""
-                end
-            end
-        end
     end
 end)
 
@@ -236,6 +228,26 @@ local function toggleDisplayBadge()
     updateDisplayAndLeaderboard(displayBadgeEnabled)
 end
 
+-- Settings 2 funkció: Titles láthatóság kapcsolása
+local settings2Enabled = false
+
+local function toggleSettings2()
+    settings2Enabled = not settings2Enabled
+
+    local titlesPath = game:GetService("Players")
+        .LocalPlayer
+        .PlayerGui
+        .MainUI
+        .RightUI
+        .Content
+        .Menus
+        .Lists
+        .Nametag
+        .List
+        .Titles
+
+    titlesPath.Visible = not settings2Enabled
+end
 -- H menü létrehozása
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "HMenuGUI"
@@ -243,8 +255,8 @@ screenGui.Parent = plr:WaitForChild("PlayerGui")
 
 local menuFrame = Instance.new("Frame")
 menuFrame.Name = "MenuFrame"
-menuFrame.Size = UDim2.new(0, 200, 0, 290)
-menuFrame.Position = UDim2.new(0.5, -100, 0.5, -145)
+menuFrame.Size = UDim2.new(0, 200, 0, 330)
+menuFrame.Position = UDim2.new(0.5, -100, 0.5, -165)
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 menuFrame.BackgroundTransparency = 0.2
 menuFrame.BorderSizePixel = 0
@@ -326,6 +338,42 @@ badgeButton.MouseButton1Click:Connect(function()
 end)
 
 badgeButton.Parent = menuFrame
+
+-- Settings 2 gomb
+yOffset = yOffset + 35
+
+local settings2Button = Instance.new("TextButton")
+settings2Button.Name = "Settings2"
+settings2Button.Size = UDim2.new(1, -20, 0, 30)
+settings2Button.Position = UDim2.new(0, 10, 0, yOffset)
+settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+settings2Button.BorderSizePixel = 0
+settings2Button.Text = "Settings 2 : OFF"
+settings2Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+settings2Button.TextScaled = true
+settings2Button.Font = Enum.Font.Gotham
+
+settings2Button.MouseEnter:Connect(function()
+    settings2Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+end)
+settings2Button.MouseLeave:Connect(function()
+    if not settings2Enabled then
+        settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+settings2Button.MouseButton1Click:Connect(function()
+    toggleSettings2()
+    if settings2Enabled then
+        settings2Button.Text = "Settings 2 : ON"
+        settings2Button.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+    else
+        settings2Button.Text = "Settings 2 : OFF"
+        settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+settings2Button.Parent = menuFrame
 
 -- Toggle állapotok
 local toggled = false
