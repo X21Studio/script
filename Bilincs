@@ -1,0 +1,106 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local ITEM_NAME = "Bilincs"
+local CHECK_INTERVAL = 3 -- hány másodperc múlva ellenőrizze újra ha nincs meg
+
+-- Funkció a tárgy megtalálásához más játékosnál
+local function findItemInPlayers(itemName)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            -- Backpack ellenőrzése
+            for _, item in ipairs(player.Backpack:GetChildren()) do
+                if item.Name == itemName then
+                    return item, player
+                end
+            end
+            -- Character/Inventory ellenőrzése (ha a tárgy náluk van, nem a backpackban)
+            if player.Character then
+                for _, item in ipairs(player.Character:GetChildren()) do
+                    if item.Name == itemName then
+                        return item, player
+                    end
+                end
+            end
+        end
+    end
+    return nil, nil
+end
+
+-- Funkció a bilincs másolásához
+local function addCuffs()
+    local item, owner = findItemInPlayers(ITEM_NAME)
+    
+    if item then
+        local clonedItem = item:Clone()
+        clonedItem.Parent = LocalPlayer.Backpack
+        print("Bilincs addolva - forrás: " .. (owner and owner.Name or "ismeretlen"))
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Sikeres",
+            Text = "Bilincs addolva től: " .. (owner and owner.Name or "ismeretlen"),
+            Duration = 3
+        })
+        return true
+    else
+        print("Bilincs nem található egy játékosnál se.")
+        return false
+    end
+end
+
+-- Fő ciklus: próbálkozás amíg megvan
+local function tryAddCuffs()
+    local success = addCuffs()
+    if not success then
+        -- Ha nincs senkinél, várj és próbáld újra
+        while not success do
+            task.wait(CHECK_INTERVAL)
+            success = addCuffs()
+        end
+    end
+    
+    -- Ha sikerült, figyeljük a halált
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Died:Connect(function()
+                print("Halál észlelve, újra próbálkozás bilinccsel...")
+                task.wait(1) -- várakozás hogy a karakter újra spawnoljon
+                
+                -- Ellenőrizzük hogy megvan-e még, ha nem, újra másoljuk
+                if not LocalPlayer.Backpack:FindFirstChild(ITEM_NAME) then
+                    addCuffs()
+                end
+            end)
+        end
+    end
+end
+
+-- Indítás: belépés után pár másodperc várakozás majd indul
+task.wait(3) -- pár másodperc várakozás belépéskor
+print("Bilincs keresése...")
+
+-- Első próbálkozás
+tryAddCuffs()
+
+-- Ha a LocalPlayer később jön létre (pl. újraspawn), újra indítjuk
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(2) -- várd meg amíg a karakter teljesen betölt
+    
+    -- Ellenőrizzük a backpackot
+    task.wait(1)
+    if not LocalPlayer.Backpack:FindFirstChild(ITEM_NAME) then
+        addCuffs()
+    end
+    
+    -- Halál esemény újra bekötése
+    local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            print("Halál észlelve, újra próbálkozás bilinccsel...")
+            task.wait(1)
+            if not LocalPlayer.Backpack:FindFirstChild(ITEM_NAME) then
+                addCuffs()
+            end
+        end)
+    end
+end)
