@@ -121,7 +121,8 @@ local function getSourceTitle(rank)
         ["Admin"] = "Administrateur",
         ["Moderator"] = "Moderateur",
         ["Content Creator"] = "Content Creator",
-        ["VIP"] = "VIP"
+        ["VIP"] = "VIP",
+        ["VIP+"] = "VIP+"
     }
     
     local folderName = rankFolders[rank]
@@ -228,26 +229,6 @@ local function toggleDisplayBadge()
     updateDisplayAndLeaderboard(displayBadgeEnabled)
 end
 
--- Settings 2 funkció: Titles láthatóság kapcsolása
-local settings2Enabled = false
-
-local function toggleSettings2()
-    settings2Enabled = not settings2Enabled
-
-    local titlesPath = game:GetService("Players")
-        .LocalPlayer
-        .PlayerGui
-        .MainUI
-        .RightUI
-        .Content
-        .Menus
-        .Lists
-        .Nametag
-        .List
-        .Titles
-
-    titlesPath.Visible = not settings2Enabled
-end
 -- H menü létrehozása
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "HMenuGUI"
@@ -276,7 +257,7 @@ titleLabel.Font = Enum.Font.GothamBold
 titleLabel.Parent = menuFrame
 
 -- Gombok létrehozása
-local ranks = {"Tulajdonos", "Developer", "Admin", "Moderator", "Content Creator", "VIP"}
+local ranks = {"Tulajdonos", "Developer", "Admin", "Moderator", "Content Creator", "VIP", "VIP+"}
 local yOffset = 35
 
 for i, rank in ipairs(ranks) do
@@ -339,41 +320,6 @@ end)
 
 badgeButton.Parent = menuFrame
 
--- Settings 2 gomb
-yOffset = yOffset + 35
-
-local settings2Button = Instance.new("TextButton")
-settings2Button.Name = "Settings2"
-settings2Button.Size = UDim2.new(1, -20, 0, 30)
-settings2Button.Position = UDim2.new(0, 10, 0, yOffset)
-settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-settings2Button.BorderSizePixel = 0
-settings2Button.Text = "Settings 2 : OFF"
-settings2Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-settings2Button.TextScaled = true
-settings2Button.Font = Enum.Font.Gotham
-
-settings2Button.MouseEnter:Connect(function()
-    settings2Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-end)
-settings2Button.MouseLeave:Connect(function()
-    if not settings2Enabled then
-        settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end
-end)
-
-settings2Button.MouseButton1Click:Connect(function()
-    toggleSettings2()
-    if settings2Enabled then
-        settings2Button.Text = "Settings 2 : ON"
-        settings2Button.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
-    else
-        settings2Button.Text = "Settings 2 : OFF"
-        settings2Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end
-end)
-
-settings2Button.Parent = menuFrame
 
 -- Toggle állapotok
 local toggled = false
@@ -384,7 +330,6 @@ task.spawn(function()
     task.wait(2) -- Várunk 2 másodpercet, hogy a GUI teljes mértékben betöltődjön
     collectLeaderboardLabels()
 end)
-
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     -- H menü: akkor is működjön, ha a játék feldolgozta a billentyűt
