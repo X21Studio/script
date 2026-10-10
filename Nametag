@@ -385,15 +385,21 @@ task.spawn(function()
     collectLeaderboardLabels()
 end)
 
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- H menü: akkor is működjön, ha a játék feldolgozta a billentyűt
+    if input.KeyCode == Enum.KeyCode.H then
+        menuOpen = not menuOpen
+        menuFrame.Visible = menuOpen
+        return
+    end
+
+    -- CmdBar: az eredeti működés megmarad
     if gameProcessed then return end
-    
+
     if input.KeyCode == Enum.KeyCode.LeftBracket then
         toggled = not toggled
         cmdBar.Visible = toggled
-    elseif input.KeyCode == Enum.KeyCode.H then
-        menuOpen = not menuOpen
-        menuFrame.Visible = menuOpen
     end
 end)
 
