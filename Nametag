@@ -196,7 +196,12 @@ local function applyTitle(rank)
     
     -- Forrás Title mappa lekérése
     local sourceTitle = getSourceTitle(rank)
-    if not sourceTitle then return end
+    if not sourceTitle then
+        if rank == "VIP+" then
+            warn("A VIP+ címforrás nem található a Titles mappában.")
+        end
+        return
+    end
     
     -- --- UIGradient ---
     local existingGrad = titleText:FindFirstChild("UIGradient")
@@ -204,16 +209,24 @@ local function applyTitle(rank)
         existingGrad:Destroy()
     end
     
-    local sourceGrad = sourceTitle:FindFirstChild("TitlesName"):FindFirstChild("UIGradient")
-    if sourceGrad then
-        local newGrad = sourceGrad:Clone()
-        newGrad.Parent = titleText
-        syncGradientToSource(sourceGrad, newGrad)
-        setupGradientWatcher(sourceGrad, newGrad)
+    if sourceTitle then
+        local titlesName = sourceTitle:FindFirstChild("TitlesName")
+        local sourceGrad = titlesName and titlesName:FindFirstChildWhichIsA("UIGradient", true)
+        if not sourceGrad then
+            sourceGrad = sourceTitle:FindFirstChildWhichIsA("UIGradient", true)
+        end
+        if sourceGrad then
+            local newGrad = sourceGrad:Clone()
+            newGrad.Parent = titleText
+            syncGradientToSource(sourceGrad, newGrad)
+            setupGradientWatcher(sourceGrad, newGrad)
+        else
+            warn("A címhez nem található UIGradient:", rank)
+        end
     end
     
     -- --- ImageRight ---
-    local sourceImageRight = sourceTitle:FindFirstChild("ImageRight")
+    local sourceImageRight = sourceTitle and sourceTitle:FindFirstChild("ImageRight")
     if sourceImageRight then
         syncImageToSource(sourceImageRight, titleImageRight)
         setupImageWatcher(sourceImageRight, titleImageRight)
